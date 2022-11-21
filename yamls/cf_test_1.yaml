@@ -1,5 +1,9 @@
 cf:
   address: radio://0/100/2M/E7E7E7E702
+  logging:
+    accx: true
+    accy: false
+    accz: true
   params:
     pid_attitude:
       attFiltCut: null
