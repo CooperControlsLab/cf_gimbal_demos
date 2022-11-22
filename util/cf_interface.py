@@ -32,6 +32,7 @@ class CFBase:
 
 class CFDroneControls(CFBase):
     def __init__(self, params_file):
+        self.current_command = CommandValues()
         self.connected = False
         self.step_test_completed = False
         self.step_test_data = DataStruct()
@@ -64,6 +65,7 @@ class CFDroneControls(CFBase):
         # TODO: Make this store data into an array, then push to CSV
         self.step_test_data.timestamps.append(timestamp)
         self.step_test_data.data.append(data)
+        self.step_test_data.input.append(self.current_command)
         # print('[%d][%s]: %s' % (timestamp, logconf.name, data))
 
     def connect(self):
@@ -72,13 +74,12 @@ class CFDroneControls(CFBase):
             cflib.crtp.init_drivers(enable_debug_driver=False)
             self.cf = Crazyflie(rw_cache='./cache')
 
-            self.lg_stab = LogConfig(name='Stabilizer', period_in_ms=50)
+            self.lg_stab = LogConfig(name='Stabilizer', period_in_ms=10)
             self.lg_stab.add_variable('stabilizer.roll', 'float')
             self.lg_stab.add_variable('stabilizer.pitch', 'float')
-            self.lg_stab.add_variable('stabilizer.yaw', 'float')
             self.lg_stab.add_variable('stateEstimateZ.rateRoll', 'float')
             self.lg_stab.add_variable('stateEstimateZ.ratePitch', 'float')
-            self.lg_stab.add_variable('stateEstimateZ.rateYaw', 'float')
+            self.lg_stab.add_variable('controller.pitchRate', 'float')
 
             self.scf = SyncCrazyflie(uri, cf=self.cf)
             self.log_thread = Thread(target=self.async_log, args=(self.scf, self.lg_stab))
@@ -132,7 +133,7 @@ class CFDroneControls(CFBase):
     def dump_yaml(self, filename='yamls/cf_last_pulled.yaml'):
         yaml.dump(self.pulled_params, open(filename, 'w'))
     
-    def basic_step_test(self):
+    def basic_step_test(self, filename='default.csv', steptime=1):
 
         self.step_test_completed = False
         self.log_thread.start()
@@ -143,23 +144,27 @@ class CFDroneControls(CFBase):
         print(f"Sending: {cmd0}")
         self.send_command(cmd0)
         print(f"Sending: {cmd1}")
-        for i in range(50):
+        self.current_command = cmd1
+        for i in range(int(steptime/0.1)):
             self.send_command(cmd1)
             time.sleep(0.1)
         
+        self.current_command = cmd2
         print(f"Sending: {cmd2}")
-        for i in range(50):
+        for i in range(int(steptime/0.1)):
             self.send_command(cmd2)
             time.sleep(0.1)
         
+        self.current_command = cmd1
         print(f"Sending: {cmd1}")
-        for i in range(50):
+        for i in range(int(steptime/0.1)):
             self.send_command(cmd1)
             time.sleep(0.1)
         self.send_command(cmd0)
 
         self.step_test_completed = True
-        print("DONE")
+        print(f"DONE...Creating {filename}")
+        self.step_test_data.to_csv(filename)
 
     def send_command(self, cmd: CommandValues):
         self.cf.commander.send_setpoint(cmd['roll'], cmd['pitch'], cmd['yawdot'], cmd['thrust'])
