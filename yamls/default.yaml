@@ -17,10 +17,10 @@ cf:
       roll_ki: 3.0
       roll_kp: 6.0
       yawMaxDelta: null
-      yaw_kd: 0
+      yaw_kd: 0.3499999940395355
       yaw_kff: null
-      yaw_ki: 0
-      yaw_kp: 0
+      yaw_ki: 1.0
+      yaw_kp: 6.0
     pid_rate:
       omxFiltCut: null
       omyFiltCut: null
@@ -36,8 +36,8 @@ cf:
       roll_kp: 250.0
       yaw_kd: 0.0
       yaw_kff: null
-      yaw_ki: 16.7
-      yaw_kp: 120
+      yaw_ki: 16.700000762939453
+      yaw_kp: 120.0
     stabilizer:
       controller: 1
   logging:

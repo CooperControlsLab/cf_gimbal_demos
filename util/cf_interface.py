@@ -12,6 +12,7 @@ from threading import Thread
 import yaml
 from util.dict_search import nested_search
 from util.data_struct import DataStruct
+import numpy as np
 
 class CommandValues(dict):
     def __init__(self, r=0.0, p=0.0, ydot=0.0, thrust=0):
@@ -80,6 +81,7 @@ class CFDroneControls(CFBase):
             self.lg_stab.add_variable('stateEstimateZ.rateRoll', 'float')
             self.lg_stab.add_variable('stateEstimateZ.ratePitch', 'float')
             self.lg_stab.add_variable('controller.pitchRate', 'float')
+            self.lg_stab.add_variable('controller.rollRate', 'float')
 
             self.scf = SyncCrazyflie(uri, cf=self.cf)
             self.log_thread = Thread(target=self.async_log, args=(self.scf, self.lg_stab))
@@ -133,13 +135,13 @@ class CFDroneControls(CFBase):
     def dump_yaml(self, filename='yamls/cf_last_pulled.yaml'):
         yaml.dump(self.pulled_params, open(filename, 'w'))
     
-    def basic_step_test(self, filename='default.csv', steptime=1):
+    def basic_step_test(self, filename='default.csv', initial=CommandValues(),step=CommandValues(),steptime=1):
 
         self.step_test_completed = False
         self.log_thread.start()
         cmd0 = CommandValues()
-        cmd1 = CommandValues(r=0, p=0, ydot=0, thrust=20000)
-        cmd2 = CommandValues(r=0, p=30, ydot=0, thrust=20000)
+        cmd1 = initial
+        cmd2 = step
         # First send zero commands to start
         print(f"Sending: {cmd0}")
         self.send_command(cmd0)
@@ -168,3 +170,41 @@ class CFDroneControls(CFBase):
 
     def send_command(self, cmd: CommandValues):
         self.cf.commander.send_setpoint(cmd['roll'], cmd['pitch'], cmd['yawdot'], cmd['thrust'])
+
+    def trajectory_test(self, filename = 'default.csv', freq=1, amplitude=20, duration=10, thrust=40000):
+        
+        self.step_test_completed = False
+        self.log_thread.start()
+        cmd0 = CommandValues()
+        cmd1 = CommandValues(0,0,0,thrust)
+        cmd2 = CommandValues(0,0,0,thrust)
+        steptime=5
+        # First send zero commands to start
+        print(f"Sending: {cmd0}")
+        self.send_command(cmd0)
+        print(f"Sending: {cmd1}")
+        self.current_command = cmd1
+        for i in range(int(steptime/0.1)):
+            self.send_command(cmd1)
+            time.sleep(0.1)
+        
+        start_time_ns = time.time_ns() #Time in nanoseconds
+        start_time = start_time_ns/1000000000.0
+        current_time = start_time
+
+        print(f"Starting!!! | Time: {current_time}")
+        # Send in trajectory commands
+        while duration > current_time - start_time:
+            current_time = (time.time_ns()/1000000000.0) 
+            norm_time = current_time - start_time
+            roll = amplitude*np.cos(2*np.pi*freq*norm_time)
+            pitch = amplitude*np.sin(2*np.pi*freq*norm_time)
+            cmd = CommandValues(roll,pitch,0,thrust)
+            self.current_command = cmd
+            self.send_command(cmd)
+            time.sleep(0.01)
+            print(f"Time: {current_time} | Command: {cmd}")
+
+        self.step_test_completed = True
+        print(f"DONE...Creating {filename}")
+        self.step_test_data.to_csv(filename)
