@@ -37,6 +37,7 @@ class CFDroneControls(CFBase):
         self.connected = False
         self.step_test_completed = False
         self.step_test_data = DataStruct()
+        self.step_test_data2 = DataStruct()
         try:
             if type(params_file) is str:
                 self.params_dict = yaml.safe_load(open(params_file, 'r'))
@@ -51,22 +52,32 @@ class CFDroneControls(CFBase):
         self.address = self.params_dict['cf']['address']
         self.connect()
     
-    def async_log(self, scf, logconf):
+    def async_log(self, scf, logconf, logconf2):
         cf = scf.cf
         cf.log.add_config(logconf)
+        cf.log.add_config(logconf2)
         logconf.data_received_cb.add_callback(self.log_callback)
+        logconf2.data_received_cb.add_callback(self.log_callback2)
         logconf.start() #TODO: need to move this somewhere else
+        logconf2.start()
         # time.sleep(5) #TODO: REMOVE
         # logconf.stop() #TODO: Need to move this somewhere else as well
         while self.step_test_completed is False:
             time.sleep(0.5)
         logconf.stop()
+        logconf2.stop()
 
     def log_callback(self, timestamp, data, logconf):
         # TODO: Make this store data into an array, then push to CSV
         self.step_test_data.timestamps.append(timestamp)
         self.step_test_data.data.append(data)
         self.step_test_data.input.append(self.current_command)
+        # print('[%d][%s]: %s' % (timestamp, logconf.name, data))
+    def log_callback2(self, timestamp, data, logconf):
+        # TODO: Make this store data into an array, then push to CSV
+        self.step_test_data2.timestamps.append(timestamp)
+        self.step_test_data2.data.append(data)
+        self.step_test_data2.input.append(self.current_command)
         # print('[%d][%s]: %s' % (timestamp, logconf.name, data))
 
     def connect(self):
@@ -76,15 +87,20 @@ class CFDroneControls(CFBase):
             self.cf = Crazyflie(rw_cache='./cache')
 
             self.lg_stab = LogConfig(name='Stabilizer', period_in_ms=10)
+            self.lg_stab2 = LogConfig(name='MotorOutput', period_in_ms=10)
             self.lg_stab.add_variable('stabilizer.roll', 'float')
             self.lg_stab.add_variable('stabilizer.pitch', 'float')
             self.lg_stab.add_variable('stateEstimateZ.rateRoll', 'float')
             self.lg_stab.add_variable('stateEstimateZ.ratePitch', 'float')
             self.lg_stab.add_variable('controller.pitchRate', 'float')
             self.lg_stab.add_variable('controller.rollRate', 'float')
+            self.lg_stab2.add_variable('motor.m1', 'float')
+            self.lg_stab2.add_variable('motor.m2', 'float')
+            self.lg_stab2.add_variable('motor.m3', 'float')
+            self.lg_stab2.add_variable('motor.m4', 'float')
 
             self.scf = SyncCrazyflie(uri, cf=self.cf)
-            self.log_thread = Thread(target=self.async_log, args=(self.scf, self.lg_stab))
+            self.log_thread = Thread(target=self.async_log, args=(self.scf, self.lg_stab, self.lg_stab2))
 
             self.cf.open_link(uri)
             print(f"Sucessfully connected to {self.address}")
@@ -171,7 +187,7 @@ class CFDroneControls(CFBase):
     def send_command(self, cmd: CommandValues):
         self.cf.commander.send_setpoint(cmd['roll'], cmd['pitch'], cmd['yawdot'], cmd['thrust'])
 
-    def trajectory_test(self, filename = 'default.csv', freq=1, amplitude=20, duration=10, thrust=40000):
+    def trajectory_test(self, filename = 'default.csv', filename2 = 'default2.csv', freq=1, amplitude=20, duration=10, thrust=40000):
         
         self.step_test_completed = False
         self.log_thread.start()
@@ -208,3 +224,4 @@ class CFDroneControls(CFBase):
         self.step_test_completed = True
         print(f"DONE...Creating {filename}")
         self.step_test_data.to_csv(filename)
+        self.step_test_data2.to_csv(filename2)

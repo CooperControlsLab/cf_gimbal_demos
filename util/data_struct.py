@@ -44,15 +44,6 @@ class DataStruct:
             self.names = self.rawdata.dtype.names
 
             file.close()
-            # file = open(filename, 'r',newline='')
-            # reader = csv.DictReader(file, fieldnames=names, delimiter=',')
-            # listdata = list(reader)
-            # for i in range(1,len(listdata)):
-            #     self.timestamps.append(listdata[i]['timestamp'])
-            #     del listdata[i]['timestamp']
-            #     self.data.append(listdata[i])
-
-            # file.close()
 
         except Exception as e: 
             print(e)
@@ -146,10 +137,32 @@ class DataStruct:
         
         
         plt.show(block=True)
+    
+    def plot_motors(self):
+        t = self.rawdata['timestamp']
+        m1 = self.rawdata['motorm1']
+        m2 = self.rawdata['motorm2']
+        m3 = self.rawdata['motorm3']
+        m4 = self.rawdata['motorm4']
+        plt.figure(1)
+        plt.plot(t,m1,'r',label='m1')
+        plt.plot(t,m2,'g',label='m2')
+        plt.plot(t,m3,'b',label='m3')
+        plt.plot(t,m4,'y',label='m4')
+        plt.legend()
+        plt.show()
 
+# Plot data by running data_struct.py
 if __name__ == "__main__":
     d = DataStruct()
-    d.from_csv('csvs/step.csv')
-    # d.plot_unorganized()
-    d.plot_subplots()
-    print('d')
+
+    d.from_csv('csvs/stable.csv') # Choose which csv you want to plot here
+    # Either choose a full absolute path, or relative path to where data_struct.py is located
+
+    # d.plot_unorganized() #Plots multiple figures, (not motor data again)
+    
+    # d.plot_motors() # Only works for motordata.csv data
+    
+    d.plot_subplots() #Plot regular data (not motor data) in subplot format
+    
+    print('d') #For breakpoint
