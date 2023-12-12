@@ -38,7 +38,7 @@ class DataStruct:
             if(filename==None):
                 print("No filename given!")
                 raise NameError
-
+            self.plot_title=filename
             file = open(filename, 'r',newline='')
             self.rawdata = np.genfromtxt(file, delimiter=',',names=True,dtype=np.float64)
             self.names = self.rawdata.dtype.names
@@ -107,6 +107,7 @@ class DataStruct:
         inputroll = self.rawdata['roll']
 
         fig,ax = plt.subplots(2,2, sharex=True)
+        fig.suptitle(self.plot_title)
         ax[0,0].set_title("Pitch Step Input Response")
         ax[0,0].plot(time, inputpitch, 'r-', label='desired-pitch')
         ax[0,0].plot(time, pitch, 'g-', label='actual-pitch')
@@ -156,7 +157,7 @@ class DataStruct:
 if __name__ == "__main__":
     d = DataStruct()
 
-    d.from_csv('csvs/stable.csv') # Choose which csv you want to plot here
+    d.from_csv('csvs/team2/trajectory-stable.csv') # Choose which csv you want to plot here
     # Either choose a full absolute path, or relative path to where data_struct.py is located
 
     # d.plot_unorganized() #Plots multiple figures, (not motor data again)
